@@ -1,2 +1,7 @@
-domain = "serveo.net"
-dont_stop_list = ["ssh-agent", "ssh"]
+import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
