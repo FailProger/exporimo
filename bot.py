@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import Command, CommandStart, CommandObject
 
-from pybook import PyBook
+from pybook import PyBook, PyBookPath
 
 from config import BOT_TOKEN
 
@@ -37,7 +37,15 @@ async def marimo(message: Message, command: CommandObject):
             await message.answer("To many args")
             return
 
-        url = PyBook.start_marimo(message.from_user.id, args_split[0], args_split[1])
+        py_path = PyBookPath(
+            file=args_split[1],
+            dir=str(message.from_user.id)
+        )
+        url = PyBook.start_marimo(
+            command=args_split[0],
+            file=py_path,
+            identifier=message.from_user.id
+        )
         await message.answer(f"Marimo started. Your URL: {url}")
 
 

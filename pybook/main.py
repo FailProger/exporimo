@@ -2,10 +2,10 @@ from subprocess import Popen, PIPE
 
 import random
 
-from pybook.types import Password, MarimoCMD, ExposeCMD, PyBookSession
-from pybook.params import ExposeService
+from .types import Password, MarimoCMD, ExposeCMD, PyBookSession, PyBookPath
+from .params import ExposeService
 
-from pybook.utils import stop_subprocesses, _dont_kill_list
+from .utils import stop_subprocesses, _dont_kill_list
 
 
 __all__ = (
@@ -15,6 +15,7 @@ __all__ = (
 
 class PyBook:
 
+    __identifier_range = [0, 100000]
     __port_range = [5500, 12500]
 
     __running_session: dict[int, PyBookSession] = {}
@@ -22,26 +23,28 @@ class PyBook:
     @classmethod
     def start_marimo(
             cls,
-            tg_id: int,
             command: str,
-            file: str,
+            file: str | PyBookPath,
+            identifier: int,
             port: int | None = None,
             password: str | None = None,
             service: ExposeService = ExposeService.ssh
     ) -> str:
+
+        py_path = file if type(file) is PyBookPath else PyBookPath(file)
 
         port = random.randint(cls.__port_range[0], cls.__port_range[1]) if port is None else port
         password = Password() if password is None else password
 
         url, marimo_popen, expose_popen = cls.__start(
             command=command,
-            file=file,
+            file=str(py_path.path),
             port=port,
             password=password,
             service=service
         )
 
-        cls.__running_session[tg_id] = PyBookSession(
+        cls.__running_session[identifier] = PyBookSession(
             marimo_popen=marimo_popen,
             expose_popen=expose_popen,
             url=url
@@ -50,10 +53,10 @@ class PyBook:
         return url
 
     @classmethod
-    def stop_marimo(cls, tg_id: int) -> None:
+    def stop_marimo(cls, identifier: int) -> None:
         stop_subprocesses(
-            cls.__running_session[tg_id].marimo_popen,
-            cls.__running_session[tg_id].expose_popen
+            cls.__running_session[identifier].marimo_popen,
+            cls.__running_session[identifier].expose_popen
         )
 
     @classmethod
