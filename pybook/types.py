@@ -5,9 +5,6 @@ from subprocess import Popen, PIPE, TimeoutExpired
 
 from typing import NamedTuple
 
-import os
-from pathlib import Path
-
 from .params import ExposeService
 from .utils import stop_subprocesses
 
@@ -17,7 +14,6 @@ __all__ = (
     "MarimoCMD",
     "ExposeCMD",
     "PyBookSession",
-    "PyBookPath"
 )
 
 
@@ -25,96 +21,6 @@ class PyBookSession(NamedTuple):
     marimo_popen: Popen
     expose_popen: Popen
     url: str
-
-
-class PyBookPath:
-
-    __default_path = "PyBooks/"
-
-    def __init__(self, file: str, dir: str = None):
-        self.__file = file
-        self.__dir = "./" if dir is None else dir if dir[-1] == "/" else f"{dir}/"
-
-        if dir:
-            dir_path = Path(self.__default_path + self.__dir)
-
-            if not dir_path.exists():
-                os.mkdir(dir_path)
-
-        self.__path = Path(
-            self.__default_path + self.__dir + (file if file.endswith(".py") else f"{file}.py")
-        ).absolute()
-
-    @property
-    def file(self) -> str:
-        return self.__file
-
-    @property
-    def dir(self) -> str:
-        return self.__dir
-
-    @property
-    def path(self) -> Path:
-        return self.__path
-
-
-class PyBookEnv:
-
-    __default_path = "PyBooks/"
-
-    def __new__(cls, *args, **kwargs):
-        dir_path = Path(cls.__default_path).absolute()
-
-        if not dir_path.exists():
-            os.mkdir(dir_path)
-
-        return super().__new__(cls)
-
-    def __init__(
-            self,
-            name: str,
-            group: str | None = None,
-            main_file_name: str = "main.py"
-    ) -> None:
-        self.__name = name
-        self.__group = group
-
-        self.__mkdirs(group, name)
-
-        self.__path = Path(
-            self.__default_path + f"{self.__group}/{(name if name[-1] == "/" else f"{name}/")}"
-        ).absolute()
-
-    @property
-    def name(self) -> str:
-        return self.__name
-
-    @property
-    def group(self) -> str:
-        return self.__group
-
-    @property
-    def path(self) -> Path:
-        return self.__path
-
-    @classmethod
-    def __mkdirs(cls, *dirs_name: str | list[str]) -> None:
-
-        for dir_name in dirs_name:
-            dir_name = "./" if dir_name is None else dir_name if dir_name[-1] == "/" else f"{dir_name}/"
-
-            if dir_name:
-                group_path = Path(cls.__default_path + dir_name).absolute()
-
-                if not group_path.exists():
-                    os.mkdir(group_path)
-
-    @classmethod
-    def __venv_cmd(cls, path: str):
-        path = Path(
-            cls.__default_path + (path if path[-1] == "/" else f"{path}/")
-        ).absolute()
-        return ["python", "-m", "venv", f"{path}.venv"]
 
 
 class Password:

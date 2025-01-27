@@ -2,10 +2,10 @@ from subprocess import Popen, PIPE
 
 import random
 
-from .types import Password, MarimoCMD, ExposeCMD, PyBookSession, PyBookPath
-from .params import ExposeService
+from pybook.types import Password, MarimoCMD, ExposeCMD, PyBookSession
+from pybook import ExposeService
 
-from .utils import stop_subprocesses, _dont_kill_list
+from pybook import stop_subprocesses, _dont_kill_list
 
 
 __all__ = (
@@ -15,7 +15,7 @@ __all__ = (
 
 class PyBook:
 
-    __identifier_range = [0, 100000]
+    __index_list = list(range(1000))
     __port_range = [5500, 12500]
 
     __running_session: dict[int, PyBookSession] = {}
@@ -24,27 +24,27 @@ class PyBook:
     def start_marimo(
             cls,
             command: str,
-            file: str | PyBookPath,
-            identifier: int,
+            file: str,
+            index: int | None = None,
             port: int | None = None,
             password: str | None = None,
             service: ExposeService = ExposeService.ssh
     ) -> str:
 
-        py_path = file if type(file) is PyBookPath else PyBookPath(file)
-
+        file = file if file.endswith(".py") else f"{file}.py"
+        index = cls.__index_list.pop(0) if index is None else index
         port = random.randint(cls.__port_range[0], cls.__port_range[1]) if port is None else port
         password = Password() if password is None else password
 
         url, marimo_popen, expose_popen = cls.__start(
             command=command,
-            file=str(py_path.path),
+            file=file,
             port=port,
             password=password,
             service=service
         )
 
-        cls.__running_session[identifier] = PyBookSession(
+        cls.__running_session[index] = PyBookSession(
             marimo_popen=marimo_popen,
             expose_popen=expose_popen,
             url=url
@@ -53,10 +53,16 @@ class PyBook:
         return url
 
     @classmethod
-    def stop_marimo(cls, identifier: int) -> None:
+    def stop_marimo(cls, index: int | None = None) -> None:
+        if index is None and len(cls.__running_session) == 1:
+            index = 0
+
+        elif index is None:
+            raise ValueError("Enter session index")
+
         stop_subprocesses(
-            cls.__running_session[identifier].marimo_popen,
-            cls.__running_session[identifier].expose_popen
+            cls.__running_session[index].marimo_popen,
+            cls.__running_session[index].expose_popen
         )
 
     @classmethod
