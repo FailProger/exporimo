@@ -54,7 +54,7 @@ logs/
 .logs/
 test*.*
 
-# exporimo
+# Marimo notebooks
 Notes/
 
 # Translations
