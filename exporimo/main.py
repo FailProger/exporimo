@@ -2,10 +2,13 @@ from subprocess import Popen, PIPE
 
 import random
 
-from pybook.types import Password, MarimoCMD, ExposeCMD, PyBookSession
-from pybook import ExposeService
+import os
+from pathlib import Path
 
-from pybook import stop_subprocesses, _dont_kill_list
+from .types import Password, MarimoCMD, ExposeCMD, PyBookSession
+from .params import ExposeService
+
+from .utils import stop_subprocesses, _dont_kill_list
 
 
 __all__ = (
@@ -18,6 +21,8 @@ class PyBook:
     __index_list = list(range(1000))
     __port_range = [5500, 12500]
 
+    __default_dir = "Notes/"
+
     __running_session: dict[int, PyBookSession] = {}
 
     @classmethod
@@ -25,11 +30,13 @@ class PyBook:
             cls,
             command: str,
             file: str,
-            index: int | None = None,
-            port: int | None = None,
-            password: str | None = None,
+            index: int = None,
+            port: int = None,
+            password: str = None,
             service: ExposeService = ExposeService.ssh
     ) -> str:
+
+        cls.__check_def_dir()
 
         file = file if file.endswith(".py") else f"{file}.py"
         index = cls.__index_list.pop(0) if index is None else index
@@ -38,7 +45,7 @@ class PyBook:
 
         url, marimo_popen, expose_popen = cls.__start(
             command=command,
-            file=file,
+            file=cls.__default_dir + file,
             port=port,
             password=password,
             service=service
@@ -53,7 +60,7 @@ class PyBook:
         return url
 
     @classmethod
-    def stop_marimo(cls, index: int | None = None) -> None:
+    def stop_marimo(cls, index: int = None) -> None:
         if index is None and len(cls.__running_session) == 1:
             index = 0
 
@@ -64,6 +71,14 @@ class PyBook:
             cls.__running_session[index].marimo_popen,
             cls.__running_session[index].expose_popen
         )
+
+    @classmethod
+    def wait(cls, index: int = None, until_stop: bool = True) -> None:
+        while True:
+            if until_stop and input() == "stop":
+                break
+
+        cls.stop_marimo(index)
 
     @classmethod
     def set_port_range(cls, start: int, end: int) -> None:
@@ -101,3 +116,11 @@ class PyBook:
         expose_popen = Popen(expose_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
         return url, marimo_popen, expose_popen
+
+    @classmethod
+    def __check_def_dir(cls) -> None:
+
+        path = Path(cls.__default_dir).absolute()
+
+        if not path.exists() or not path.is_dir():
+            os.mkdir(f"{path}/")
