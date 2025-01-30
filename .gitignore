@@ -54,6 +54,9 @@ logs/
 .logs/
 test*.*
 
+# exporimo
+Notes/
+
 # Translations
 *.mo
 *.pot

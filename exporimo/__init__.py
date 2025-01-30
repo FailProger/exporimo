@@ -1,4 +1,4 @@
-from .main import PyBook
+from .main import Exporimo
 
 
 __all__: tuple[str, ...] = (

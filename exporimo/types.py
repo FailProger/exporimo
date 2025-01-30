@@ -13,11 +13,11 @@ __all__ = (
     "Password",
     "MarimoCMD",
     "ExposeCMD",
-    "PyBookSession",
+    "ExporimoSession",
 )
 
 
-class PyBookSession(NamedTuple):
+class ExporimoSession(NamedTuple):
     marimo_popen: Popen
     expose_popen: Popen
     url: str
