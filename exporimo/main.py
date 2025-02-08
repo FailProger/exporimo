@@ -76,9 +76,11 @@ class Exporimo:
         elif index is None:
             raise ValueError("Enter session index")
 
+        session = cls.__running_session.pop(index)
+
         stop_subprocesses(
-            cls.__running_session[index].marimo_popen,
-            cls.__running_session[index].expose_popen
+            session.marimo_popen,
+            session.expose_popen
         )
 
     @classmethod
