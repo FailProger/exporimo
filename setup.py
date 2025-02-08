@@ -1,13 +1,14 @@
 from setuptools import setup, find_packages
 
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 with open("README.md", "r", encoding="UTF-8") as file:
     long_description = file.read()
 
 requires_list = [
-    "marimo>=0.10.0"
+    "marimo>=0.10.0",
+    "netifaces>=0.11.0"
 ]
 
 setup(

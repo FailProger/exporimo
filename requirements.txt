@@ -1,1 +1,2 @@
 marimo>=0.10.0
+netifaces>=0.11.0

@@ -1,7 +1,5 @@
-import string
-import random
-
 from subprocess import Popen, PIPE, TimeoutExpired
+from netifaces import interfaces, ifaddresses, AF_INET
 
 from typing import NamedTuple
 
@@ -10,10 +8,8 @@ from .utils import stop_subprocesses
 
 
 __all__ = (
-    "Password",
-    "MarimoCMD",
-    "ExposeCMD",
     "ExporimoSession",
+    "CMDs"
 )
 
 
@@ -23,47 +19,16 @@ class ExporimoSession(NamedTuple):
     url: str
 
 
-class Password:
-
-    # Store all characters in lists
-    __letters_low: list[str] = list(string.ascii_lowercase)
-    __letters_up: list[str] = list(string.ascii_uppercase)
-    __digits: list[str] = list(string.digits)
-
-    def __new__(cls, length: int = 24) -> str:
-
-        # Shuffle all lists
-        random.shuffle(cls.__letters_low)
-        random.shuffle(cls.__letters_up)
-        random.shuffle(cls.__digits)
-
-        # Calculate 30% & 20% of number of characters
-        first_part = round(length * (30 / 100))
-        second_part = round(length * (40 / 100))
-
-        # Generation of the password (60% letters and 40% digits)
-        result: list[str] = []
-
-        for x in range(first_part):
-            result.append(cls.__letters_low[x])
-            result.append(cls.__letters_up[x])
-
-        for x in range(second_part):
-            result.append(cls.__digits[x])
-
-        # Shuffle result
-        random.shuffle(result)
-
-        # Join result
-        password = "".join(result)
-
-        return password
-
-
 class MarimoCMD:
 
-    def __new__(cls, command: str, file: str, port: int, password: str) -> list[str]:
-        return ["marimo", command, file, "-p", f"{port}", "--token-password", password]
+    def __new__(cls, command: str, file: str, port: int, password: str, host: str = None) -> list[str]:
+        cmd = ["marimo", command, file, "-p", f"{port}", "--token-password", password]
+
+        if host:
+            cmd.append("--host")
+            cmd.append(str(host))
+
+        return cmd
 
 
 class SSHCMD:
@@ -121,18 +86,60 @@ class SSHCMD:
 
 class ExposeCMD:
 
-    def __new__(cls, service: ExposeService, port: int, password: str) -> tuple[list[str], str]:
+    __not_ifaces = ["lo", "loop"]
+
+    def __new__(cls, port: int, service: ExposeService) -> tuple[list[str], str, int]:
+
         if service == ExposeService.ssh:
             ssh_cmd = SSHCMD()
-            expose_cmd = ssh_cmd(port=port)
+            expose_cmd = ssh_cmd(port)
+            host = str(ssh_cmd.domain)
 
-            host = f"{ssh_cmd.domain}:{port}"
+        elif service == ExposeService.local_network:
+            expose_cmd = ["clear"]
+
+            host = None
+
+            for iface_name in interfaces():
+                if iface_name not in cls.__not_ifaces:
+                    host = ifaddresses(iface_name).setdefault(AF_INET)[0]["addr"]
+                    break
+
+            if host is None:
+                raise RuntimeError("Interfaces not found")
 
         else:
             raise ValueError("Another services now not supported")
 
-        return expose_cmd, cls.__url(host, password)
+        return expose_cmd, host, port
+
+
+class CMDs:
+
+    def __new__(
+            cls,
+            command: str,
+            file: str,
+            port: int,
+            password: str,
+            service: ExposeService
+    ) -> tuple[list[str], list[str], str]:
+
+        expose_cmd, host, expose_port = ExposeCMD(
+            port=port,
+            service=service
+        )
+
+        marimo_cmd = MarimoCMD(
+            command=command,
+            file=file,
+            port=port,
+            password=password,
+            host=host if service == ExposeService.local_network else None
+        )
+
+        return marimo_cmd, expose_cmd, cls.__url(host, expose_port, password)
 
     @classmethod
-    def __url(cls, host: str, password: str) -> str:
-        return f"http://{host}?access_token={password}"
+    def __url(cls, host: str, port: int, password: str) -> str:
+        return f"http://{host}:{port}?access_token={password}"

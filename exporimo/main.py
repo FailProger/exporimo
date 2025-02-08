@@ -4,11 +4,12 @@ import random
 
 import os
 from pathlib import Path
+from typing import Union
 
-from .types import Password, MarimoCMD, ExposeCMD, ExporimoSession
+from .types import CMDs, ExporimoSession
 from .params import ExposeService
 
-from .utils import stop_subprocesses, _dont_kill_list
+from .utils import Password, stop_subprocesses, _dont_kill_list
 
 
 __all__ = (
@@ -21,10 +22,8 @@ class Exporimo:
     __index_list = list(range(1000))
     __port_range = [5500, 12500]
 
-    __default_dir = "Notes/"
-    __default_wd = str(Path(__default_dir).absolute())
-
-    __one_setup = True
+    __default_dir = "Notebooks/"
+    __default_wd_path = Path(__default_dir).absolute()
 
     __running_session: dict[int, ExporimoSession] = {}
 
@@ -32,7 +31,7 @@ class Exporimo:
     def start_marimo(
             cls,
             command: str,
-            file: str,
+            file: Union[str, Path],
             index: int = None,
             port: int = None,
             password: str = None,
@@ -40,9 +39,12 @@ class Exporimo:
             print_url: bool = True
     ) -> str:
 
-        cls.__setup()
+        if index:
+            url = cls.is_running(index)
+            if url:
+                return url
 
-        file = file if file.endswith(".py") else f"{file}.py"
+        file = cls.__check_file(file)
         index = cls.__index_list.pop(0) if index is None else index
         port = random.randint(cls.__port_range[0], cls.__port_range[1]) if port is None else port
         password = Password() if password is None else password
@@ -103,6 +105,11 @@ class Exporimo:
         _dont_kill_list.append(serves_name)
 
     @classmethod
+    def is_running(cls, index: int) -> Union[str, None]:
+        if index in list(cls.__running_session.keys()):
+            return cls.__running_session[index].url
+
+    @classmethod
     def __start(
             cls,
             *,
@@ -113,16 +120,12 @@ class Exporimo:
             service: ExposeService
     ) -> tuple[str, Popen, Popen]:
 
-        marimo_cmd = MarimoCMD(
+        marimo_cmd, expose_cmd, url = CMDs(
             command=command,
             file=file,
             port=port,
-            password=password
-        )
-        expose_cmd, url = ExposeCMD(
-            service=service,
-            port=port,
-            password=password
+            password=password,
+            service=service
         )
 
         marimo_popen = Popen(marimo_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -131,28 +134,31 @@ class Exporimo:
         return url, marimo_popen, expose_popen
 
     @classmethod
-    def __setup(cls) -> None:
-        if cls.__one_setup:
-            cls.__check_def_dir()
-            cls.__check_wd()
+    def __check_file(cls, file: Union[str, Path]) -> str:
 
-            cls.__one_setup = False
+        if type(file) is Path or Path(file).absolute().is_file():
+            file = str(Path(file).absolute())
 
-    @classmethod
-    def __check_def_dir(cls) -> None:
+        else:
+            cls.__create_default_dir()
+            cls.__change_wd()
 
-        path = Path(cls.__default_dir).absolute()
+            file = str(file) if str(file).endswith(".py") else f"{file}.py"
 
-        if not path.exists() or (path.exists() and not path.is_dir()):
-            os.mkdir(f"{path}/")
+        return file
 
     @classmethod
-    def __check_wd(cls) -> None:
+    def __create_default_dir(cls) -> None:
+        if not cls.__default_wd_path.is_dir():
+            os.mkdir(f"{cls.__default_wd_path}/")
+
+    @classmethod
+    def __change_wd(cls) -> None:
         temp = Popen(
             ["pwd"],
             stdin=PIPE, stdout=PIPE, stderr=PIPE
         )
         result = str(temp.communicate()[0])[2:][:-1][:-1][:-1]
 
-        if result != cls.__default_wd:
-            os.chdir(cls.__default_wd)
+        if result != str(cls.__default_wd_path):
+            os.chdir(str(cls.__default_wd_path))

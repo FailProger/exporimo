@@ -11,5 +11,5 @@ class ExposeService(Enum):
         More about on https://github.com/localtunnel/localtunnel
     """
 
+    local_network = auto()
     ssh = auto()
-    localtunnel = auto()
